@@ -1,0 +1,168 @@
+BFS : NQUEEN, WATER JAR
+
+BFS NQUEEN
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdlib.h>
+
+#define N 8
+
+typedef struct {
+    int row;
+    int col;
+} Position;
+
+typedef struct {
+    int board[N][N];
+} State;
+
+Position* create_position(int row, int col) {
+    Position* pos = (Position*)malloc(sizeof(Position));
+    pos->row = row;
+    pos->col = col;
+    return pos;
+}
+
+State* create_state() {
+    State* state = (State*)malloc(sizeof(State));
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            state->board[i][j] = 0;
+        }
+    }
+    return state;
+}
+
+bool is_safe(State* state, int row, int col) {
+    int i, j;
+
+    // Check this row on left side
+    for (i = 0; i < col; i++)
+        if (state->board[row][i])
+            return false;
+
+    // Check upper diagonal on left side
+    for (i = row, j = col; i >= 0 && j >= 0; i--, j--)
+        if (state->board[i][j])
+            return false;
+
+    // Check lower diagonal on left side
+    for (i = row, j = col; j >= 0 && i < N; i++, j--)
+        if (state->board[i][j])
+            return false;
+
+    return true;
+}
+
+void print_solution(State* state) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            printf("%d ", state->board[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+bool solve_n_queens(State* state, int col) {
+    if (col >= N)
+        return true;
+
+    for (int i = 0; i < N; i++) {
+        if (is_safe(state, i, col)) {
+            state->board[i][col] = 1;
+            if (solve_n_queens(state, col + 1))
+                return true;
+            state->board[i][col] = 0; // Backtrack
+        }
+    }
+
+    return false;
+}
+
+int main() {
+    State* state = create_state();
+    int solutions_count = 0;
+
+    while (solve_n_queens(state, 0)) {
+        printf("Solution %d:\n", ++solutions_count);
+        print_solution(state);
+        printf("\n");
+
+        // Reset the board for next solution
+        state = create_state();
+    }
+
+    if (solutions_count == 0) {
+        printf("No solutions found.\n");
+    } else {
+        printf("Total solutions found: %d\n", solutions_count);
+    }
+
+    return 0;
+}
+
+
+BFS : WATER JAR
+
+#include <stdio.h>
+#include <stdbool.h>
+
+typedef struct {
+    int jug1, jug2;
+} State;
+
+#define MAX_CAPACITY 100
+#define ENQUEUE(s) (queue[rear++] = (s))
+#define DEQUEUE() (queue[front++])
+#define IS_EMPTY() (front == rear)
+
+void bfs(int jug1_capacity, int jug2_capacity, int target) {
+    bool visited[MAX_CAPACITY][MAX_CAPACITY] = {false};
+    State queue[MAX_CAPACITY * MAX_CAPACITY];
+    State parent[MAX_CAPACITY * MAX_CAPACITY]; // To store parent states
+    int front = 0, rear = 0;
+
+    State start = {0, 0};
+    ENQUEUE(start);
+    visited[0][0] = true;
+
+    while (!IS_EMPTY()) {
+        State current = DEQUEUE();
+
+        if (current.jug1 == target || current.jug2 == target) {
+            // Print the solution path
+            printf("Solution found: (%d, %d)\n", current.jug1, current.jug2);
+            State p = parent[rear - 1];
+            while (p.jug1 != 0 || p.jug2 != 0) {
+                printf("(%d, %d)\n", p.jug1, p.jug2);
+                p = parent[p.jug1 * MAX_CAPACITY + p.jug2];
+            }
+            printf("(0, 0)\n\n");
+        }
+
+        State next_states[] = {
+            {jug1_capacity, current.jug2}, {current.jug1, jug2_capacity},
+            {0, current.jug2}, {current.jug1, 0},
+            {current.jug1 - (jug2_capacity - current.jug2 > current.jug1 ? current.jug1 : jug2_capacity - current.jug2), 
+             current.jug2 + (jug2_capacity - current.jug2 > current.jug1 ? current.jug1 : jug2_capacity - current.jug2)},
+            {current.jug1 + (jug1_capacity - current.jug1 > current.jug2 ? current.jug2 : jug1_capacity - current.jug1), 
+             current.jug2 - (jug1_capacity - current.jug1 > current.jug2 ? current.jug2 : jug1_capacity - current.jug1)}
+        };
+
+        for (int i = 0; i < 6; i++) {
+            if (!visited[next_states[i].jug1][next_states[i].jug2]) {
+                ENQUEUE(next_states[i]);
+                visited[next_states[i].jug1][next_states[i].jug2] = true;
+                parent[next_states[i].jug1 * MAX_CAPACITY + next_states[i].jug2] = current;
+            }
+        }
+    }
+
+    printf("No more solutions found.\n");
+}
+
+int main() {
+    int jug1_capacity = 4, jug2_capacity = 3, target = 2;
+    bfs(jug1_capacity, jug2_capacity, target);
+    return 0;
+}
