@@ -1,0 +1,220 @@
+A* 8 PUZZLE
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <limits.h>
+
+#define N 3
+
+// Structure to represent a puzzle state
+typedef struct Puzzle {
+    int board[N][N];
+    int blank_row;
+    int blank_col;
+    int heuristic;
+    int depth;
+    struct Puzzle* parent;
+} Puzzle;
+
+// Priority queue node
+typedef struct PQNode {
+    Puzzle* puzzle;
+    int priority;
+    struct PQNode* next;
+} PQNode;
+
+// Priority queue
+typedef struct {
+    PQNode* front;
+} PriorityQueue;
+
+// Create a new puzzle state
+Puzzle* createPuzzle(int board[N][N], int blank_row, int blank_col, int depth, Puzzle* parent) {
+    Puzzle* puzzle = (Puzzle*)malloc(sizeof(Puzzle));
+    if (!puzzle) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        exit(EXIT_FAILURE);
+    }
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            puzzle->board[i][j] = board[i][j];
+        }
+    }
+    puzzle->blank_row = blank_row;
+    puzzle->blank_col = blank_col;
+    puzzle->heuristic = INT_MAX;
+    puzzle->depth = depth;
+    puzzle->parent = parent;
+    return puzzle;
+}
+
+// Create a new node for the priority queue
+PQNode* createPQNode(Puzzle* puzzle, int priority) {
+    PQNode* node = (PQNode*)malloc(sizeof(PQNode));
+    if (!node) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        exit(EXIT_FAILURE);
+    }
+    node->puzzle = puzzle;
+    node->priority = priority;
+    node->next = NULL;
+    return node;
+}
+
+// Initialize an empty priority queue
+PriorityQueue* initPriorityQueue() {
+    PriorityQueue* pq = (PriorityQueue*)malloc(sizeof(PriorityQueue));
+    if (!pq) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        exit(EXIT_FAILURE);
+    }
+    pq->front = NULL;
+    return pq;
+}
+
+// Check if the priority queue is empty
+bool isPQEmpty(PriorityQueue* pq) {
+    return pq->front == NULL;
+}
+
+// Push a puzzle state into the priority queue with a given priority
+void push(PriorityQueue* pq, Puzzle* puzzle, int priority) {
+    PQNode* node = createPQNode(puzzle, priority);
+    if (isPQEmpty(pq) || priority < pq->front->priority) {
+        node->next = pq->front;
+        pq->front = node;
+    } else {
+        PQNode* current = pq->front;
+        while (current->next != NULL && current->next->priority <= priority) {
+            current = current->next;
+        }
+        node->next = current->next;
+        current->next = node;
+    }
+}
+
+// Pop the puzzle state with the highest priority from the priority queue
+Puzzle* pop(PriorityQueue* pq) {
+    if (isPQEmpty(pq)) {
+        fprintf(stderr, "Priority queue is empty.\n");
+        exit(EXIT_FAILURE);
+    }
+    PQNode* temp = pq->front;
+    Puzzle* puzzle = temp->puzzle;
+    pq->front = pq->front->next;
+    free(temp);
+    return puzzle;
+}
+
+// Check if the puzzle is solved (goal state reached)
+bool isGoalState(Puzzle* puzzle, int goal[N][N]) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if (puzzle->board[i][j] != goal[i][j]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+// Manhattan distance heuristic
+int manhattanDistance(int x1, int y1, int x2, int y2) {
+    return abs(x1 - x2) + abs(y1 - y2);
+}
+
+// Calculate the total heuristic value of the puzzle
+void calculateHeuristic(Puzzle* puzzle, int goal[N][N]) {
+    int total = 0;
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if (puzzle->board[i][j] != 0) {
+                total += manhattanDistance(i, j, (puzzle->board[i][j] - 1) / N, (puzzle->board[i][j] - 1) % N);
+            }
+        }
+    }
+    puzzle->heuristic = total;
+}
+
+// Generate child states from the current state
+void generateChildren(Puzzle* puzzle, PriorityQueue* pq, int goal[N][N]) {
+    static int row[] = {-1, 1, 0, 0};
+    static int col[] = {0, 0, -1, 1};
+
+    for (int k = 0; k < 4; k++) {
+        int new_row = puzzle->blank_row + row[k];
+        int new_col = puzzle->blank_col + col[k];
+
+        if (new_row >= 0 && new_row < N && new_col >= 0 && new_col < N) {
+            int temp = puzzle->board[puzzle->blank_row][puzzle->blank_col];
+            puzzle->board[puzzle->blank_row][puzzle->blank_col] = puzzle->board[new_row][new_col];
+            puzzle->board[new_row][new_col] = temp;
+
+            Puzzle* child = createPuzzle(puzzle->board, new_row, new_col, puzzle->depth + 1, puzzle);
+            calculateHeuristic(child, goal);
+            push(pq, child, child->heuristic + child->depth);
+
+            temp = puzzle->board[puzzle->blank_row][puzzle->blank_col];
+            puzzle->board[puzzle->blank_row][puzzle->blank_col] = puzzle->board[new_row][new_col];
+            puzzle->board[new_row][new_col] = temp;
+        }
+    }
+}
+
+// Print the solution path
+void printSolutionPath(Puzzle* puzzle) {
+    if (puzzle->parent == NULL) {
+        return;
+    }
+    printSolutionPath(puzzle->parent);
+    printf("Move: %d\n", puzzle->depth);
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            printf("%d ", puzzle->board[i][j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+// Solve the 8 puzzle problem using A* algorithm
+void solve8Puzzle(int initial[N][N], int goal[N][N]) {
+    Puzzle* initialPuzzle = createPuzzle(initial, 0, 0, 0, NULL);
+    calculateHeuristic(initialPuzzle, goal);
+
+    PriorityQueue* pq = initPriorityQueue();
+    push(pq, initialPuzzle, initialPuzzle->heuristic + initialPuzzle->depth);
+
+    while (!isPQEmpty(pq)) {
+        Puzzle* currentPuzzle = pop(pq);
+
+        if (isGoalState(currentPuzzle, goal)) {
+            printf("Solution Found:\n");
+            printSolutionPath(currentPuzzle);
+            return;
+        }
+
+        generateChildren(currentPuzzle, pq, goal);
+    }
+
+    printf("No solution found.\n");
+}
+
+int main() {
+    int initial[N][N] = {
+        {1, 2, 3},
+        {4, 0, 6},
+        {7, 5, 8}
+    };
+
+    int goal[N][N] = {
+        {1, 2, 3},
+        {4, 5, 6},
+        {7, 8, 0}
+    };
+
+    solve8Puzzle(initial, goal);
+
+    return 0;
+}
