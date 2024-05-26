@@ -1,0 +1,182 @@
+DFS: NQUEEN, VACUUM WORLD, WATER JAR
+
+DFS : NQUEEN
+#include <stdio.h>
+#include <stdbool.h>
+
+#define N 4
+
+void print_board(int board[N][N]) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            printf("%d ", board[i][j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+bool is_safe(int board[N][N], int row, int col) {
+    // Check if there is a queen in the same column
+    for (int i = 0; i < row; i++) {
+        if (board[i][col])
+            return false;
+    }
+
+    // Check upper left diagonal
+    for (int i = row, j = col; i >= 0 && j >= 0; i--, j--) {
+        if (board[i][j])
+            return false;
+    }
+
+    // Check upper right diagonal
+    for (int i = row, j = col; i >= 0 && j < N; i--, j++) {
+        if (board[i][j])
+            return false;
+    }
+
+    return true;
+}
+
+bool solve_n_queens_util(int board[N][N], int row) {
+    if (row == N) {
+        print_board(board);
+        return true;
+    }
+
+    bool res = false;
+    for (int col = 0; col < N; col++) {
+        if (is_safe(board, row, col)) {
+            board[row][col] = 1;
+            res = solve_n_queens_util(board, row + 1) || res;
+            board[row][col] = 0;
+        }
+    }
+
+    return res;
+}
+
+void solve_n_queens() {
+    int board[N][N] = {0};
+    if (!solve_n_queens_util(board, 0)) {
+        printf("No solution exists\n");
+    }
+}
+
+int main() {
+    solve_n_queens();
+    return 0;
+}
+
+
+
+DFS : VACCUUM WORLD
+
+#include <stdio.h>
+#include <stdbool.h>
+
+#define ROOMS 2
+
+void dfs_vacuum_world(int room, bool cleaned[]) {
+    // Clean the current room
+    cleaned[room] = true;
+    printf("Cleaned room %d\n", room);
+
+    // Move left and clean if not already cleaned
+    int left_room = (room - 1 + ROOMS) % ROOMS;
+    if (!cleaned[left_room]) {
+        printf("Move left to room %d\n", left_room);
+        dfs_vacuum_world(left_room, cleaned);
+    }
+
+    // Move right and clean if not already cleaned
+    int right_room = (room + 1) % ROOMS;
+    if (!cleaned[right_room]) {
+        printf("Move right to room %d\n", right_room);
+        dfs_vacuum_world(right_room, cleaned);
+    }
+}
+
+void solve_vacuum_world() {
+    bool cleaned[ROOMS] = {false}; // Initialize all rooms as not cleaned
+    int start_room = 0; // Starting room
+    dfs_vacuum_world(start_room, cleaned);
+}
+
+int main() {
+    solve_vacuum_world();
+    return 0;
+}
+
+
+
+DFS: WATER JUG
+
+#include <stdio.h>
+#include <stdbool.h>
+
+typedef struct {
+    int jug1, jug2;
+} State;
+
+#define MAX_CAPACITY 100
+#define STACK_SIZE (MAX_CAPACITY * MAX_CAPACITY)
+
+void print_solution(State path[], int length) {
+    printf("Solution found:");
+    for (int i = 0; i < length; i++) {
+        printf(" (%d, %d)", path[i].jug1, path[i].jug2);
+    }
+    printf("\n");
+}
+
+bool is_visited[MAX_CAPACITY][MAX_CAPACITY] = {false};
+
+void dfs(int jug1_capacity, int jug2_capacity, int target) {
+    State stack[STACK_SIZE];
+    int top = 0;
+    State path[STACK_SIZE];
+    int path_length = 0;
+
+    State start = {0, 0};
+    stack[top++] = start;
+
+    while (top > 0) {
+        State current = stack[--top];
+        path[path_length++] = current;
+
+        if (current.jug1 == target || current.jug2 == target) {
+            print_solution(path, path_length);
+            path_length--;
+            continue;
+        }
+
+        if (!is_visited[current.jug1][current.jug2]) {
+            is_visited[current.jug1][current.jug2] = true;
+
+            State next_states[] = {
+                {jug1_capacity, current.jug2}, {current.jug1, jug2_capacity},
+                {0, current.jug2}, {current.jug1, 0},
+                {current.jug1 - (jug2_capacity - current.jug2 > current.jug1 ? current.jug1 : jug2_capacity - current.jug2), 
+                 current.jug2 + (jug2_capacity - current.jug2 > current.jug1 ? current.jug1 : jug2_capacity - current.jug2)},
+                {current.jug1 + (jug1_capacity - current.jug1 > current.jug2 ? current.jug2 : jug1_capacity - current.jug1), 
+                 current.jug2 - (jug1_capacity - current.jug1 > current.jug2 ? current.jug2 : jug1_capacity - current.jug1)}
+            };
+
+            for (int i = 0; i < 6; i++) {
+                if (!is_visited[next_states[i].jug1][next_states[i].jug2]) {
+                    stack[top++] = next_states[i];
+                }
+            }
+        }
+        path_length--;
+    }
+}
+
+int main() {
+    int jug1_capacity = 4, jug2_capacity = 3, target = 2;
+    dfs(jug1_capacity, jug2_capacity, target);
+    return 0;
+}
+
+
